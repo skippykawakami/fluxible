@@ -10,6 +10,7 @@ var hoistNonReactStatics = require('hoist-non-react-statics');
 function createComponent(Component, stores, getStateFromStores, customContextTypes) {
     var componentName = Component.displayName || Component.name;
     var componentContextTypes = Object.assign({
+        changeBatcher: React.PropTypes.object,
         getStore: React.PropTypes.func.isRequired
     }, customContextTypes);
     var StoreConnector = React.createClass({
@@ -20,12 +21,20 @@ function createComponent(Component, stores, getStateFromStores, customContextTyp
         },
         componentDidMount: function componentDidMount() {
             stores.forEach(function storesEach(Store) {
-                this.context.getStore(Store).addChangeListener(this._onStoreChange);
+                if (this.context.changeBatcher) {
+                    this.context.changeBatcher.addStoreListener(Store, this._onStoreChange);
+                } else {
+                    this.context.getStore(Store).addChangeListener(this._onStoreChange);
+                }
             }, this);
         },
         componentWillUnmount: function componentWillUnmount() {
             stores.forEach(function storesEach(Store) {
-                this.context.getStore(Store).removeChangeListener(this._onStoreChange);
+                if (this.context.changeBatcher) {
+                    this.context.changeBatcher.removeStoreListener(Store, this._onStoreChange);
+                } else {
+                    this.context.getStore(Store).removeChangeListener(this._onStoreChange);
+                }
             }, this);
         },
         componentWillReceiveProps: function componentWillReceiveProps(nextProps){

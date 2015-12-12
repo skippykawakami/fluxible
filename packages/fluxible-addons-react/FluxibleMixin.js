@@ -40,6 +40,7 @@ var React = require('react');
 var FluxibleMixin = {
 
     contextTypes: {
+        changeBatcher: React.PropTypes.object,
         executeAction: React.PropTypes.func,
         getStore: React.PropTypes.func
     },
@@ -184,8 +185,11 @@ var FluxibleMixin = {
         if (this.isMounted && !this.isMounted()) {
             throw new Error('storeListener mixin called listen when component wasn\'t mounted.');
         }
-
-        listener.store.addChangeListener(listener.handler);
+        if (this.context.changeBatcher) {
+            this.context.changeBatcher.addStoreListener(listener.store.constructor, listener.handler);
+        } else {
+            listener.store.addChangeListener(listener.handler);
+        }
         this._fluxible_listeners.push(listener);
     },
 
@@ -196,8 +200,12 @@ var FluxibleMixin = {
     componentWillUnmount: function componentWillUnmount() {
         if (Array.isArray(this._fluxible_listeners)) {
             this._fluxible_listeners.forEach(function (listener) {
-                listener.store.removeChangeListener(listener.handler);
-            });
+                if (this.context.changeBatcher) {
+                    this.context.changeBatcher.removeStoreListener(listener.store.constructor, listener.handler);
+                } else {
+                    listener.store.removeChangeListener(listener.handler);
+                }
+            }, this);
         }
         this._fluxible_listeners = [];
     }
